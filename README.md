@@ -1,19 +1,25 @@
 # TechVault - Modern E-commerce Platform
 
-TechVault is a modern e-commerce platform built with React and TypeScript, featuring a real-time chat support system and an intuitive shopping experience.
+TechVault is a modern e-commerce platform built with React, TypeScript, and MongoDB, featuring category-based product organization, AI-powered recommendations, and real-time chat support.
 
 ## Features
 
 - 🛍️ Modern product catalog with dynamic filtering
+- 🗃️ Category-based product organization
 - 🛒 Interactive shopping cart
-- 💬 Real-time chat support with product recommendations
+- 💬 Real-time chat support with AI recommendations
+- 🖼️ High-quality product images from CDN
 - 🎨 Sleek UI with Tailwind CSS
 - 📱 Fully responsive design
 - ⚡ Fast and optimized performance
+- 🔄 MongoDB integration for product management
+- 🤖 AI-powered product recommendations
 
 ## Tech Stack
 
-- **Frontend Framework**: React 18 with TypeScript
+### Frontend
+
+- **Framework**: React 18 with TypeScript
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
 - **Routing**: React Router DOM
@@ -21,16 +27,35 @@ TechVault is a modern e-commerce platform built with React and TypeScript, featu
   - HeadlessUI for accessible components
   - HeroIcons for modern icons
 - **Notifications**: React Hot Toast
-- **Development Tools**:
-  - PostCSS for CSS processing
-  - ESLint & Prettier for code quality
+
+### Backend
+
+- **Server**: Express.js
+- **Database**: MongoDB Atlas
+- **ODM**: Mongoose
+- **API**: RESTful endpoints
+- **MCP Servers**:
+  - Product DB Server (MongoDB operations)
+  - Product Image Server (DALL-E integration)
+  - OpenAI Server (Chat recommendations)
+
+### Type System
+
+- **Base Types**: Shared product interfaces
+- **MongoDB Types**: Database-specific schemas
+- **UI Types**: Frontend-specific interfaces
+- **Enhanced Types**: AI recommendation types
+- **Type Conversion**: Automated type transformations
 
 ## Prerequisites
 
-Before you begin, ensure you have installed:
+Before you begin, ensure you have:
 
 - Node.js (v18 or higher)
 - npm (v8 or higher)
+- MongoDB Atlas account
+- OpenAI API key
+- Environment variables configured
 
 ## Installation
 
@@ -47,9 +72,29 @@ Before you begin, ensure you have installed:
    npm install
    ```
 
-3. Start the development server:
+3. Set up environment variables:
+
    ```bash
+   # Create .env file
+   cp .env.example .env
+
+   # Add your configuration
+   MONGODB_URI=your_mongodb_uri
+   OPENAI_API_KEY=your_openai_key
+   PORT=5002
+   ```
+
+4. Start the development servers:
+
+   ```bash
+   # Start Express backend
+   npm run server
+
+   # Start React frontend
    npm start
+
+   # Start MCP servers
+   npm run mcp
    ```
 
 The application will be available at `http://localhost:3000`.
@@ -58,28 +103,71 @@ The application will be available at `http://localhost:3000`.
 
 ```
 ecommerce-app/
-├── public/
-│   └── images/
-│       └── products/    # Product images
+├── server/               # Express backend
+│   ├── config/          # Database configuration
+│   ├── models/          # MongoDB schemas
+│   └── routes/          # API endpoints
 ├── src/
 │   ├── components/      # React components
-│   │   ├── Navbar.tsx
-│   │   ├── ProductCatalog.tsx
-│   │   ├── ShoppingCart.tsx
-│   │   └── ChatWidget.tsx
+│   │   ├── CategoryPage/
+│   │   ├── ChatWidget/
+│   │   ├── Navbar/
+│   │   ├── ProductCatalog/
+│   │   └── ShoppingCart/
 │   ├── context/        # React Context providers
 │   │   └── CartContext.tsx
-│   ├── App.tsx         # Main application component
-│   └── index.tsx       # Application entry point
+│   ├── types/         # TypeScript type definitions
+│   │   └── product.ts
+│   ├── utils/         # Utility functions
+│   │   ├── productData.ts
+│   │   └── productRecommender.ts
+│   ├── App.tsx       # Main application component
+│   └── index.tsx     # Application entry point
 └── package.json
 ```
 
-## Available Scripts
+## Development
 
-- `npm start`: Runs the app in development mode
+### Type System
+
+The application uses a sophisticated type system:
+
+```typescript
+// Base product interface
+interface BaseProduct {
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  category: string;
+}
+
+// MongoDB specific
+interface MongoProduct extends BaseProduct {
+  _id: string;
+  specs: Record<string, string>;
+}
+
+// UI specific
+interface UIProduct extends BaseProduct {
+  id: number;
+  features: string[];
+  useCase: string[];
+}
+
+// Enhanced with metadata
+interface EnhancedProduct extends UIProduct {
+  metadata: ProductMetadata;
+}
+```
+
+### Available Scripts
+
+- `npm start`: Runs the React app in development mode
+- `npm run server`: Starts the Express backend server
+- `npm run mcp`: Starts all MCP servers
 - `npm test`: Launches the test runner
 - `npm run build`: Builds the app for production
-- `npm run eject`: Ejects from Create React App
 
 ## Contributing
 

@@ -1,4 +1,4 @@
-import { type Product } from "../context/CartContext";
+import { type EnhancedProduct, type ProductMetadata } from "../types/product";
 
 export interface MatchScore {
   exact: number; // Direct matches (0-1)
@@ -6,24 +6,6 @@ export interface MatchScore {
   context: number; // Use case relevance (0-1)
   technical: number; // Feature matches (0-1)
   final: number; // Weighted combination (0-10)
-}
-
-export interface ProductMetadata {
-  semanticTags: string[];
-  category: {
-    primary: string;
-    secondary: string[];
-  };
-  useCases: Array<{
-    name: string;
-    confidence: number; // 0-1
-  }>;
-  technicalSpecs: Record<string, string | number>;
-}
-
-export interface EnhancedProduct extends Omit<Product, "features"> {
-  features: string[];
-  metadata: ProductMetadata;
 }
 
 // Need to declare this for price comparisons

@@ -1,4 +1,4 @@
-import { type EnhancedProduct } from "./productRecommender";
+import { type EnhancedProduct } from "../types/product";
 
 export const enhancedProducts: EnhancedProduct[] = [
   {

@@ -4,11 +4,12 @@ import { ChatBubbleLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { findRelevantProducts } from "../utils/productRecommender";
 import { enhancedProducts } from "../utils/productData";
 import type { MatchScore } from "../utils/productRecommender";
+import { EnhancedProduct, convertUIToEnhancedProduct } from "../types/product";
 
 interface Message {
   text: string;
   isUser: boolean;
-  products?: (typeof enhancedProducts)[number][];
+  products?: EnhancedProduct[];
   scores?: MatchScore[];
 }
 
@@ -110,8 +111,10 @@ export default function ChatWidget() {
     setInputValue("");
   };
 
-  const handleAddToCart = (product: (typeof enhancedProducts)[number]) => {
-    addToCart(product);
+  const handleAddToCart = (product: EnhancedProduct) => {
+    // Convert EnhancedProduct to UIProduct before adding to cart
+    const { metadata, ...uiProduct } = product;
+    addToCart(uiProduct);
 
     // Find similar products for recommendation
     const similarResults = findRelevantProducts(
