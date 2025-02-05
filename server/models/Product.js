@@ -85,5 +85,8 @@ productSchema.pre("save", function (next) {
   next();
 });
 
+// Add compound unique index for brand and model
+productSchema.index({ brand: 1, model: 1 }, { unique: true });
+
 const Product = mongoose.model("Product", productSchema);
 export default Product;

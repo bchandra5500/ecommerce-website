@@ -60,7 +60,10 @@ router.get(
 router.get(
   "/category/:category",
   asyncHandler(async (req, res) => {
-    const products = await Product.find({ category: req.params.category });
+    const { category } = req.params;
+    // Return all products if category is 'all', otherwise filter by category
+    const filter = category === "all" ? {} : { category };
+    const products = await Product.find(filter);
     res.json(products);
   })
 );

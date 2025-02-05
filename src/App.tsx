@@ -7,7 +7,6 @@ import {
   useParams,
 } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import ProductCatalog from "./components/ProductCatalog";
 import ShoppingCart from "./components/ShoppingCart";
 import ChatWidget from "./components/ChatWidget";
 import CategoryPage from "./components/CategoryPage";
@@ -22,13 +21,19 @@ function App() {
           <Navbar />
           <main className="container mx-auto px-4 py-8">
             <Routes>
-              <Route path="/" element={<ProductCatalog />} />
+              <Route
+                path="/"
+                element={<Navigate to="/category/all" replace />}
+              />
               <Route path="/cart" element={<ShoppingCart />} />
               <Route
                 path="/category/:category"
                 element={<CategoryPageWrapper />}
               />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route
+                path="*"
+                element={<Navigate to="/category/all" replace />}
+              />
             </Routes>
           </main>
           <ChatWidget />
@@ -42,9 +47,12 @@ function App() {
 function CategoryPageWrapper() {
   const { category } = useParams<{ category: string }>();
 
-  // Check if category is valid
-  if (!category || !VALID_CATEGORIES.includes(category as any)) {
-    return <Navigate to="/" replace />;
+  // Check if category is valid or if it's "all"
+  if (
+    !category ||
+    (category !== "all" && !VALID_CATEGORIES.includes(category as any))
+  ) {
+    return <Navigate to="/category/all" replace />;
   }
 
   return <CategoryPage />;
