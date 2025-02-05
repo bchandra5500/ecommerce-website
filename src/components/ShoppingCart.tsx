@@ -41,10 +41,27 @@ export default function ShoppingCart() {
               <h3 className="text-lg font-semibold text-gray-800">
                 {item.name}
               </h3>
-              <p className="text-gray-600">Quantity: {item.quantity}</p>
-              <p className="text-gray-800 font-semibold">
-                ${(item.price * item.quantity).toFixed(2)}
+              <p className="text-sm text-gray-600">
+                {item.brand} {item.model}
               </p>
+              <div className="flex items-center mt-1">
+                <div className="flex items-center">
+                  <span className="text-yellow-400">★</span>
+                  <span className="text-sm text-gray-600 ml-1">
+                    {item.rating.average.toFixed(1)} ({item.rating.count})
+                  </span>
+                </div>
+                <span className="mx-2">•</span>
+                <span className="text-sm text-gray-600">
+                  {item.specs.common.warranty}
+                </span>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-gray-600">Quantity: {item.quantity}</p>
+                <p className="text-gray-800 font-semibold">
+                  ${(item.price * item.quantity).toFixed(2)}
+                </p>
+              </div>
             </div>
             <button
               onClick={() => removeFromCart(item.id)}

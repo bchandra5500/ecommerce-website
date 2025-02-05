@@ -2,14 +2,17 @@ import React, { useState, useRef, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { ChatBubbleLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { findRelevantProducts } from "../utils/productRecommender";
-import { enhancedProducts } from "../utils/productData";
 import type { MatchScore } from "../utils/productRecommender";
-import { EnhancedProduct, convertUIToEnhancedProduct } from "../types/product";
+import {
+  UIProduct,
+  MongoProduct,
+  convertMongoToUIProduct,
+} from "../types/product";
 
 interface Message {
   text: string;
   isUser: boolean;
-  products?: EnhancedProduct[];
+  products?: UIProduct[];
   scores?: MatchScore[];
 }
 
@@ -56,9 +59,7 @@ export default function ChatWidget() {
     const isMediumConfidence = topScore >= 7.5 && topScore < 8.5;
 
     // Get unique categories from results
-    const categories = [
-      ...new Set(results.products.map((p) => p.metadata.category.primary)),
-    ];
+    const categories = [...new Set(results.products.map((p) => p.category))];
 
     // Get key features mentioned in query
     const queryTokens = query.toLowerCase().split(" ");
@@ -84,6 +85,39 @@ export default function ChatWidget() {
     return `I've found some products that might be relevant to your needs. Take a look at these options:`;
   };
 
+  const [products, setProducts] = useState<UIProduct[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("http://localhost:5002/api/products");
+        if (!response.ok) {
+          throw new Error("Failed to fetch products");
+        }
+        const mongoProducts: MongoProduct[] = await response.json();
+        console.log(
+          "MongoDB Products:",
+          JSON.stringify(mongoProducts, null, 2)
+        );
+        const uiProducts = mongoProducts.map(convertMongoToUIProduct);
+        console.log(
+          "Converted UI Products:",
+          JSON.stringify(uiProducts, null, 2)
+        );
+        setProducts(uiProducts);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "An error occurred");
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
@@ -91,11 +125,38 @@ export default function ChatWidget() {
     // Add user message
     setMessages((prev) => [...prev, { text: inputValue, isUser: true }]);
 
+    if (loading) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: "I'm still loading the product catalog. Please try again in a moment.",
+          isUser: false,
+        },
+      ]);
+      return;
+    }
+
+    if (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: "I'm having trouble accessing the product catalog. Please try again later.",
+          isUser: false,
+        },
+      ]);
+      return;
+    }
+
+    console.log("Current products state:", JSON.stringify(products, null, 2));
+    console.log("User query:", inputValue);
+
     // Find relevant products with scores
-    const results = findRelevantProducts(inputValue, enhancedProducts);
+    const results = findRelevantProducts(inputValue, products);
+    console.log("Search results:", JSON.stringify(results, null, 2));
 
     // Generate appropriate response
     const response = generateResponse(inputValue, results);
+    console.log("Generated response:", JSON.stringify(response, null, 2));
 
     // Add bot response
     setMessages((prev) => [
@@ -111,17 +172,13 @@ export default function ChatWidget() {
     setInputValue("");
   };
 
-  const handleAddToCart = (product: EnhancedProduct) => {
-    // Convert EnhancedProduct to UIProduct before adding to cart
-    const { metadata, ...uiProduct } = product;
-    addToCart(uiProduct);
+  const handleAddToCart = (product: UIProduct) => {
+    addToCart(product);
 
     // Find similar products for recommendation
     const similarResults = findRelevantProducts(
-      product.metadata.semanticTags.join(" ") +
-        " " +
-        product.features.join(" "),
-      enhancedProducts.filter((p) => p.id !== product.id)
+      product.features.join(" ") + " " + product.useCases.join(" "),
+      products.filter((p: UIProduct) => p.id !== product.id)
     );
 
     setMessages((prev) => [

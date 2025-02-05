@@ -1,8 +1,35 @@
 import express from "express";
 import asyncHandler from "express-async-handler";
 import Product from "../models/Product.js";
+import { purgeProducts, seedProducts } from "../data/productManager.js";
 
 const router = express.Router();
+
+// Purge all products
+router.post(
+  "/purge",
+  asyncHandler(async (req, res) => {
+    const result = await purgeProducts();
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  })
+);
+
+// Seed products with standardized data
+router.post(
+  "/seed",
+  asyncHandler(async (req, res) => {
+    const result = await seedProducts();
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  })
+);
 
 // Get all products with optional category filter
 router.get(

@@ -1,4 +1,4 @@
-import { type EnhancedProduct, type ProductMetadata } from "../types/product";
+import { type UIProduct } from "../types/product";
 
 export interface MatchScore {
   exact: number; // Direct matches (0-1)
@@ -9,7 +9,7 @@ export interface MatchScore {
 }
 
 // Need to declare this for price comparisons
-const enhancedProducts: EnhancedProduct[] = [];
+const uiProducts: UIProduct[] = [];
 
 // Query type detection
 const detectQueryType = (
@@ -141,7 +141,7 @@ const tokenize = (text: string): string[] => {
 
 const calculateExactMatch = (
   query: string[],
-  product: EnhancedProduct,
+  product: UIProduct,
   queryType: ReturnType<typeof detectQueryType>
 ): number => {
   let score = 0;
@@ -149,14 +149,16 @@ const calculateExactMatch = (
     product.name.toLowerCase(),
     product.description.toLowerCase(),
     ...product.features,
-    ...product.metadata.semanticTags,
+    ...product.useCases,
+    product.brand.toLowerCase(),
+    product.model.toLowerCase(),
   ].join(" ");
 
   // Direct product type matching gets highest weight
   const productTypeMatch = query.some(
     (term) =>
       product.name.toLowerCase().includes(term) ||
-      product.metadata.category.primary.includes(term)
+      product.category.includes(term)
   );
   if (productTypeMatch) score += 2;
 
@@ -179,7 +181,7 @@ const calculateExactMatch = (
 
 const calculateSemanticMatch = (
   query: string[],
-  product: EnhancedProduct,
+  product: UIProduct,
   queryType: ReturnType<typeof detectQueryType>
 ): number => {
   let score = 0;
@@ -187,9 +189,10 @@ const calculateSemanticMatch = (
     product.name.toLowerCase(),
     product.description.toLowerCase(),
     ...product.features,
-    ...product.metadata.semanticTags,
-    product.metadata.category.primary,
-    ...product.metadata.category.secondary,
+    ...product.useCases,
+    product.brand.toLowerCase(),
+    product.model.toLowerCase(),
+    product.category,
   ].join(" ");
 
   query.forEach((term) => {
@@ -201,7 +204,7 @@ const calculateSemanticMatch = (
     score += matchCount * 0.3;
 
     // Extra weight for category matches
-    if (allTerms.some((t) => product.metadata.category.primary.includes(t))) {
+    if (allTerms.some((t) => product.category.includes(t))) {
       score += 0.5;
     }
   });
@@ -212,17 +215,17 @@ const calculateSemanticMatch = (
 
 const calculateContextMatch = (
   query: string[],
-  product: EnhancedProduct,
+  product: UIProduct,
   queryType: ReturnType<typeof detectQueryType>
 ): number => {
   let score = 0;
   const queryText = query.join(" ");
 
-  // Use case matching with confidence weights
-  product.metadata.useCases.forEach((useCase) => {
-    const useCaseTerms = [useCase.name, ...findSynonyms(useCase.name)];
+  // Use case matching
+  product.useCases.forEach((useCase: string) => {
+    const useCaseTerms = [useCase, ...findSynonyms(useCase)];
     if (useCaseTerms.some((term) => queryText.includes(term))) {
-      score += useCase.confidence;
+      score += 0.5;
     }
   });
 
@@ -236,12 +239,14 @@ const calculateContextMatch = (
       // Special handling for edge cases
       if (queryText.includes("cheapest")) {
         score +=
-          product.price === Math.min(...enhancedProducts.map((p) => p.price))
+          product.price ===
+          Math.min(...uiProducts.map((p: UIProduct) => p.price))
             ? 2
             : 0;
       } else if (queryText.includes("most expensive")) {
         score +=
-          product.price === Math.max(...enhancedProducts.map((p) => p.price))
+          product.price ===
+          Math.max(...uiProducts.map((p: UIProduct) => p.price))
             ? 2
             : 0;
       } else {
@@ -266,16 +271,11 @@ const calculateContextMatch = (
     queryTerms.has("earphones") ||
     queryTerms.has("earbuds");
 
-  if (isAudioQuery && product.metadata.category.primary !== "audio") {
+  if (isAudioQuery && product.category !== "headsets") {
     score -= 1; // Penalize non-audio products for audio queries
   }
 
-  if (
-    queryText.includes(product.metadata.category.primary) ||
-    product.metadata.category.secondary.some((cat: string) =>
-      queryText.includes(cat)
-    )
-  ) {
+  if (queryText.includes(product.category)) {
     score += 0.8; // Increased weight for category matches
   }
 
@@ -285,21 +285,23 @@ const calculateContextMatch = (
 
 const calculateTechnicalMatch = (
   query: string[],
-  product: EnhancedProduct
+  product: UIProduct
 ): number => {
   let score = 0;
   const queryText = query.join(" ");
 
   // Technical specifications matching
-  Object.entries(product.metadata.technicalSpecs).forEach(([key, value]) => {
-    const specTerms = [key, value.toString()];
-    if (specTerms.some((term) => queryText.includes(term))) {
-      score += 0.5;
+  Object.entries(product.specs.details).forEach(
+    ([key, value]: [string, any]) => {
+      const specTerms = [key, value.toString()];
+      if (specTerms.some((term) => queryText.includes(term))) {
+        score += 0.5;
+      }
     }
-  });
+  );
 
   // Feature matching with synonyms
-  product.features.forEach((feature) => {
+  product.features.forEach((feature: string) => {
     const featureTerms = [feature, ...findSynonyms(feature)];
     if (featureTerms.some((term) => queryText.includes(term))) {
       score += 1;
@@ -309,8 +311,7 @@ const calculateTechnicalMatch = (
   // Normalize score
   return Math.min(
     score /
-      (product.features.length +
-        Object.keys(product.metadata.technicalSpecs).length),
+      (product.features.length + Object.keys(product.specs.details).length),
     1
   );
 };
@@ -360,12 +361,12 @@ const calculateFinalScore = (
 
 export const findRelevantProducts = (
   query: string,
-  products: EnhancedProduct[],
+  products: UIProduct[],
   confidenceThreshold = 6.0 // Lowered threshold for better recall
-): { products: EnhancedProduct[]; scores: MatchScore[] } => {
-  // Update enhancedProducts for price comparisons
-  enhancedProducts.length = 0;
-  enhancedProducts.push(...products);
+): { products: UIProduct[]; scores: MatchScore[] } => {
+  // Update uiProducts for price comparisons
+  uiProducts.length = 0;
+  uiProducts.push(...products);
 
   const queryTokens = tokenize(query);
   const queryType = detectQueryType(query);
@@ -430,64 +431,30 @@ export const findRelevantProducts = (
       const headphones = filteredProducts.filter(
         (p) =>
           p.name.toLowerCase().includes("headphone") ||
-          p.metadata.category.primary === "audio"
+          p.category === "headsets"
       );
       // If we found headphones, use them, otherwise fall back to all audio devices
       if (headphones.length > 0) {
         filteredProducts = headphones;
       } else {
         filteredProducts = filteredProducts.filter(
-          (p) => p.metadata.category.primary === "audio"
+          (p) => p.category === "headsets"
         );
       }
     } else {
       filteredProducts = filteredProducts.filter(
-        (p) => p.metadata.category.primary === "audio"
+        (p) => p.category === "headsets"
       );
     }
   } else if (isLaptopQuery) {
     filteredProducts = filteredProducts.filter(
-      (p) => p.metadata.category.primary === "computers"
+      (p) => p.category === "computers"
     );
   } else if (isDisplayQuery && isLaptopQuery) {
     // If query mentions both display and laptop, prioritize laptops
     filteredProducts = filteredProducts.filter(
-      (p) => p.metadata.category.primary === "computers"
+      (p) => p.category === "computers"
     );
-  }
-
-  // Smart home specific filtering
-  if (queryText.includes("voice control") || queryText.includes("smart home")) {
-    // For voice control or integration queries, only include smart home devices with voice control
-    if (
-      queryText.includes("voice control") ||
-      queryText.includes("smart home integration")
-    ) {
-      // Don't filter from filteredProducts to preserve existing filters
-      const voiceControlDevices = filteredProducts.filter(
-        (p) =>
-          p.metadata.category.primary === "smart home" &&
-          (p.features.includes("voice control") ||
-            p.description.toLowerCase().includes("voice control"))
-      );
-
-      // If we found voice control devices, use them, otherwise fall back to all smart home devices
-      if (voiceControlDevices.length > 0) {
-        filteredProducts = voiceControlDevices;
-      } else {
-        filteredProducts = filteredProducts.filter(
-          (p) =>
-            p.metadata.category.primary === "smart home" ||
-            p.metadata.category.secondary.includes("smart home")
-        );
-      }
-    } else {
-      filteredProducts = filteredProducts.filter(
-        (p) =>
-          p.metadata.category.primary === "smart home" ||
-          p.metadata.category.secondary.includes("smart home")
-      );
-    }
   }
 
   const productsWithScores = filteredProducts.map((product) => {
@@ -504,10 +471,7 @@ export const findRelevantProducts = (
     let adjustedScore = finalScore;
 
     // Boost scores for exact category matches
-    if (
-      queryText.includes(product.metadata.category.primary) ||
-      product.metadata.category.secondary.some((cat) => queryText.includes(cat))
-    ) {
+    if (queryText.includes(product.category)) {
       adjustedScore *= 1.2;
     }
 

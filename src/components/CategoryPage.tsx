@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 
-interface Product {
-  _id: string;
-  name: string;
-  category: string;
-  price: number;
-  description: string;
-  image: string;
-  specs: Record<string, string>;
-}
+import { MongoProduct } from "../types/product";
 
 const CategoryPage = () => {
   const { category } = useParams<{ category: string }>();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<MongoProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -64,9 +56,23 @@ const CategoryPage = () => {
                 ${product.price.toFixed(2)}
               </p>
               <div className="mt-4">
-                <h3 className="font-semibold mb-2">Specifications:</h3>
+                <h3 className="font-semibold mb-2">Common Specifications:</h3>
                 <ul className="text-sm text-gray-600">
-                  {Object.entries(product.specs).map(([key, value]) => (
+                  <li className="mb-1">
+                    <span className="font-medium">Release Year:</span>{" "}
+                    {product.specs.common.releaseYear}
+                  </li>
+                  <li className="mb-1">
+                    <span className="font-medium">Warranty:</span>{" "}
+                    {product.specs.common.warranty}
+                  </li>
+                </ul>
+
+                <h3 className="font-semibold mb-2 mt-4">
+                  Detailed Specifications:
+                </h3>
+                <ul className="text-sm text-gray-600">
+                  {Object.entries(product.specs.details).map(([key, value]) => (
                     <li key={key} className="mb-1">
                       <span className="font-medium">{key}:</span> {value}
                     </li>

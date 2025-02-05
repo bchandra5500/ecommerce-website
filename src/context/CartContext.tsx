@@ -12,7 +12,7 @@ interface CartItem extends UIProduct {
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: UIProduct | MongoProduct) => void;
-  removeFromCart: (productId: number) => void;
+  removeFromCart: (productId: string) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
 }
@@ -54,7 +54,7 @@ export function CartProvider({ children }: CartProviderProps) {
     });
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: string) => {
     setItems((currentItems) =>
       currentItems.filter((item) => item.id !== productId)
     );
