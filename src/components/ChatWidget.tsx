@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useCart } from "../context/CartContext";
-import { ChatBubbleLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  CommandLineIcon,
+  PaperAirplaneIcon,
+  SparklesIcon,
+  RocketLaunchIcon,
+  ChevronDownIcon,
+  EllipsisHorizontalIcon,
+} from "@heroicons/react/24/outline";
 import { findRelevantProducts } from "../utils/productRecommender";
 import type { MatchScore } from "../utils/productRecommender";
 import {
@@ -17,14 +24,36 @@ interface Message {
 }
 
 const WELCOME_MESSAGE = {
-  text: "👋 Hi! I'm your TechVault assistant powered by Bharat.AI. I can help you find the perfect tech products, answer questions about our catalog, and provide personalized recommendations. How can I assist you today?",
+  text: `👋 Welcome to TechVaultGPT!
+
+I'm your AI shopping assistant, powered by advanced machine learning to help you discover the perfect tech products. I can:
+
+• Find products based on your specific needs
+• Compare different options
+• Provide personalized recommendations
+• Answer questions about our catalog
+
+Try asking something like:
+"Find me a gaming laptop under $2000"
+"What's the best noise-cancelling headphone?"
+"I need a powerful computer for video editing"`,
   isUser: false,
 };
 
+const TYPING_MESSAGES = [
+  "Analyzing your request...",
+  "Searching product database...",
+  "Calculating recommendations...",
+  "Processing results...",
+];
+
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingText, setTypingText] = useState("");
+  const typingIndex = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { addToCart } = useCart();
@@ -158,16 +187,33 @@ export default function ChatWidget() {
     const response = generateResponse(inputValue, results);
     console.log("Generated response:", JSON.stringify(response, null, 2));
 
-    // Add bot response
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: response,
-        isUser: false,
-        products: results.products,
-        scores: results.scores,
-      },
-    ]);
+    // Show typing animation
+    setIsTyping(true);
+    typingIndex.current = 0;
+    const randomTyping =
+      TYPING_MESSAGES[Math.floor(Math.random() * TYPING_MESSAGES.length)];
+    const typingInterval = setInterval(() => {
+      if (typingIndex.current < randomTyping.length) {
+        setTypingText(randomTyping.slice(0, typingIndex.current + 1));
+        typingIndex.current++;
+      } else {
+        clearInterval(typingInterval);
+        // Add bot response after typing animation
+        setTimeout(() => {
+          setIsTyping(false);
+          setTypingText("");
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: response,
+              isUser: false,
+              products: results.products,
+              scores: results.scores,
+            },
+          ]);
+        }, 500);
+      }
+    }, 25);
 
     setInputValue("");
   };
@@ -197,29 +243,37 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="chat-widget">
-      {!isOpen ? (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-full shadow-lg hover:from-blue-700 hover:to-blue-900 transition-all transform hover:scale-105"
-        >
-          <ChatBubbleLeftIcon className="h-6 w-6" />
-        </button>
-      ) : (
-        <div className="bg-white rounded-lg shadow-2xl w-96 h-[32rem] flex flex-col">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 flex justify-between items-center rounded-t-lg">
+    <div className="fixed bottom-4 right-4">
+      {isOpen && (
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-[450px] h-[85vh] flex flex-col border border-gray-200">
+          <div className="bg-gradient-to-r from-indigo-600 to-blue-700 text-white p-4 flex items-center gap-3 rounded-t-2xl relative">
+            <SparklesIcon className="h-6 w-6 text-blue-200" />
             <div>
-              <h3 className="font-bold text-lg">TechVault Assistant</h3>
-              <p className="text-xs text-blue-100">Powered by Bharat.AI</p>
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                TechVaultGPT
+                <span className="bg-blue-200/20 text-xs px-2 py-0.5 rounded-full">
+                  Beta
+                </span>
+              </h3>
+              <p className="text-xs text-blue-200 flex items-center gap-1">
+                <RocketLaunchIcon className="h-3 w-3" />
+                AI Shopping Assistant
+              </p>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-blue-200 transition-colors"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
+            <div className="absolute right-4 flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-blue-200">Online</span>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-blue-200 hover:text-white transition-colors"
+              >
+                <ChevronDownIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -228,52 +282,66 @@ export default function ChatWidget() {
                 }`}
               >
                 <div
-                  className={`inline-block max-w-[80%] p-3 rounded-lg ${
+                  className={`inline-block max-w-[85%] p-4 rounded-2xl ${
                     message.isUser
-                      ? "bg-blue-600 text-white rounded-br-none"
-                      : "bg-white text-gray-800 shadow-md rounded-bl-none"
+                      ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-br-none shadow-lg"
+                      : "bg-white/80 backdrop-blur-sm text-gray-800 shadow-md rounded-bl-none border border-gray-100"
                   }`}
                 >
+                  {!message.isUser && (
+                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200/30">
+                      <SparklesIcon className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs font-medium text-blue-600">
+                        TechVaultGPT
+                      </span>
+                    </div>
+                  )}
                   <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                   {message.products && message.products.length > 0 && (
                     <div className="mt-3 space-y-3">
                       {message.products.map((product, idx) => (
                         <div
                           key={product.id}
-                          className="bg-white rounded-lg shadow-md overflow-hidden"
+                          className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-gray-100 transition-all hover:shadow-xl hover:scale-[1.02]"
                         >
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-32 object-cover"
-                          />
-                          <div className="p-3">
-                            <div className="flex justify-between items-start mb-1">
-                              <p className="font-semibold text-gray-800">
-                                {product.name}
-                              </p>
+                          <div className="relative">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-40 object-cover"
+                            />
+                            <div className="absolute top-2 right-2">
                               {message.scores && (
-                                <span className="text-xs text-gray-500">
-                                  Match:{" "}
+                                <span className="bg-black/60 backdrop-blur-md text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                                  <SparklesIcon className="h-3 w-3" />
                                   {Math.round(message.scores[idx].final * 10) /
                                     10}
                                   /10
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              ${product.price.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-gray-500 mb-2">
-                              {product.description}
-                            </p>
-                            <div className="flex flex-wrap gap-1 mb-2">
+                          </div>
+                          <div className="p-4">
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-start">
+                                <p className="font-semibold text-gray-800 text-base">
+                                  {product.name}
+                                </p>
+                                <p className="text-base font-bold text-blue-600">
+                                  ${product.price.toFixed(2)}
+                                </p>
+                              </div>
+                              <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                                {product.description}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mb-3">
                               {product.features
                                 .slice(0, 3)
                                 .map((feature, idx) => (
                                   <span
                                     key={idx}
-                                    className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full"
+                                    className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full border border-blue-100/50 transition-colors hover:bg-blue-100"
                                   >
                                     {feature}
                                   </span>
@@ -281,9 +349,10 @@ export default function ChatWidget() {
                             </div>
                             <button
                               onClick={() => handleAddToCart(product)}
-                              className="w-full bg-blue-600 text-white text-sm py-1.5 px-3 rounded-md hover:bg-blue-700 transition-colors"
+                              className="w-full bg-gradient-to-r from-indigo-600 to-blue-700 text-white text-sm py-2.5 px-4 rounded-lg hover:from-indigo-700 hover:to-blue-800 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
                             >
-                              Add to Cart
+                              <span>Add to Cart</span>
+                              <RocketLaunchIcon className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
@@ -293,29 +362,51 @@ export default function ChatWidget() {
                 </div>
               </div>
             ))}
+            {isTyping && (
+              <div className="flex items-start space-x-2 mb-4">
+                <div className="bg-white/80 backdrop-blur-sm text-gray-800 shadow-md rounded-2xl rounded-bl-none border border-gray-100 p-4">
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200/30">
+                    <SparklesIcon className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-600">
+                      TechVaultGPT
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-600">{typingText}</p>
+                    <span className="animate-pulse">▋</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
-          <form onSubmit={handleSubmit} className="p-4 bg-white border-t">
-            <div className="flex gap-2">
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask about our products..."
-                className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[40px] max-h-[120px] transition-all duration-200"
-                rows={1}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-              />
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200"
+          >
+            <div className="flex gap-3 items-end">
+              <div className="flex-1 relative">
+                <CommandLineIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <textarea
+                  ref={textareaRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Message TechVaultGPT..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[45px] max-h-[120px] transition-all duration-200"
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                />
+              </div>
               <button
                 type="submit"
-                className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all transform hover:scale-105 self-end"
+                className="bg-gradient-to-r from-indigo-600 to-blue-700 text-white p-2.5 rounded-xl hover:from-indigo-700 hover:to-blue-800 transition-all transform hover:scale-105 self-end flex items-center gap-2"
               >
-                Send
+                <PaperAirplaneIcon className="h-5 w-5" />
               </button>
             </div>
           </form>
